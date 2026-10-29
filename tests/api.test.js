@@ -1,0 +1,3 @@
+const test=require('node:test');const assert=require('node:assert/strict');const app=require('../server/app');
+test('health endpoint responds',async()=>{const server=app.listen(0);try{const res=await fetch(`http://127.0.0.1:${server.address().port}/api/health`);assert.equal(res.status,200);assert.equal((await res.json()).ok,true);}finally{server.close();}});
+test('invalid calculation type rejected',async()=>{const server=app.listen(0);try{const res=await fetch(`http://127.0.0.1:${server.address().port}/api/calculate`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({kind:'other'})});assert.equal(res.status,400);}finally{server.close();}});

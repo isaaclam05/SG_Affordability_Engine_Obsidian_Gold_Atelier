@@ -1,0 +1,25 @@
+(()=>{'use strict';
+const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+if(!reduced){document.body.classList.add('sg-entering');setTimeout(()=>document.body.classList.remove('sg-entering'),650);}
+// Deliberately leave ordinary external links and calculator form submissions untouched.
+if(!reduced)document.querySelectorAll('a[href]').forEach(a=>{a.addEventListener('click',e=>{if(e.defaultPrevented||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey||e.button!==0||a.hasAttribute('download')||a.target&&a.target!=='_self')return;const url=new URL(a.href,location.href);if(url.origin!==location.origin||url.pathname===location.pathname||url.hash)return;e.preventDefault();document.body.classList.add('sg-leaving');setTimeout(()=>location.assign(url.href),170);});});
+const output=document.getElementById('output');const total=document.getElementById('monthly-total');const income=document.getElementById('monthly-income');
+const motionEnabled=()=>!reduced&&!document.hidden;
+function animateNumber(el,next){if(!el||!motionEnabled())return;const currency=next.includes('S$');const percent=next.includes('%');const end=Number(next.replace(/[^\d.-]/g,''));if(!Number.isFinite(end)||end<0)return;const start=Number((el.dataset.sgLastValue||'0').replace(/[^\d.-]/g,''))||0;el.dataset.sgLastValue=next;if(el._sgFrame)cancelAnimationFrame(el._sgFrame);const duration=850,t0=performance.now();const formatter=new Intl.NumberFormat('en-SG',{maximumFractionDigits:percent?1:0,minimumFractionDigits:percent?1:0});function step(now){const p=Math.min(1,(now-t0)/duration);const eased=1-Math.pow(1-p,3);el.textContent=(currency?'S$':'')+formatter.format(start+(end-start)*eased)+(percent?'%':'');if(p<1)el._sgFrame=requestAnimationFrame(step);else el.textContent=next;}el._sgFrame=requestAnimationFrame(step);}
+// Calculator writes into result elements; intercept only those DOM updates without changing financial calculations.
+if(output){const summary=document.createElement('div');summary.className='sg-live-summary';summary.setAttribute('aria-label','Live affordability summary');summary.innerHTML='<div><span>Monthly commitment</span><strong id="sg-sticky-total">Awaiting calculation</strong></div><div style="text-align:right"><span>Income used</span><small id="sg-sticky-share">—</small></div>';const results=output.closest('.results');if(results){results.insertBefore(summary,output);summary.hidden=true;}
+const stickyTotal=summary.querySelector('#sg-sticky-total'),stickyShare=summary.querySelector('#sg-sticky-share');let lastTotal='',lastShare='';const sync=()=>{if(output.classList.contains('hidden'))return;summary.hidden=false;const newTotal=total?.textContent||'',newShare=income?.textContent||'';if(newTotal&&newTotal!==lastTotal){lastTotal=newTotal;stickyTotal.textContent=newTotal;animateNumber(total,newTotal);output.classList.remove('sg-result-update');void output.offsetWidth;output.classList.add('sg-result-update');}if(newShare&&newShare!==lastShare){lastShare=newShare;stickyShare.textContent=newShare;animateNumber(income,newShare);}};
+// Observe only output state; avoid observing the animated text itself.
+new MutationObserver(sync).observe(output,{attributes:true,attributeFilter:['class']});
+const calc=document.getElementById('calculate');const form=document.getElementById('calc-form');if(form&&calc){form.addEventListener('submit',()=>{calc.classList.add('sg-loading');const done=()=>{calc.classList.remove('sg-loading');sync();};const watch=new MutationObserver(()=>{if(!calc.disabled){watch.disconnect();done();}});watch.observe(calc,{attributes:true,attributeFilter:['disabled']});setTimeout(()=>{watch.disconnect();done();},12000);});}
+document.addEventListener('sg:calculation-rendered',sync);
+
+}
+// Gold, accessible Chart.js visualisation: no changes to data or calculations.
+function polishCharts(){if(typeof Chart==='undefined')return;Chart.defaults.color='#BDB5A8';Chart.defaults.font.family='Manrope, sans-serif';Chart.defaults.animation.duration=reduced?0:900;Chart.defaults.plugins.tooltip.backgroundColor='rgba(24,26,30,.97)';Chart.defaults.plugins.tooltip.borderColor='rgba(196,164,106,.48)';Chart.defaults.plugins.tooltip.borderWidth=1;Chart.defaults.plugins.tooltip.titleColor='#F5F3EE';Chart.defaults.plugins.tooltip.bodyColor='#E1C58F';
+// Update instances when calculations have finished rendering.
+const update=()=>{for(const chart of Object.values(Chart.instances||{})){if(!chart?.data?.datasets)continue;chart.data.datasets.forEach((ds,i)=>{if(chart.config.type==='line'){ds.borderColor='#D9B77C';ds.backgroundColor='rgba(196,164,106,.14)';ds.pointHoverRadius=5;ds.pointHoverBackgroundColor='#F5DDA8';}else if(chart.config.type==='doughnut'){ds.backgroundColor=['#C4A46A','#74624F','#E1C58F'];ds.hoverOffset=9;}});chart.update(reduced?'none':undefined);}};
+const outputEl=document.getElementById('output');if(outputEl){const c=outputEl.querySelector('#balance-chart');if(c){document.addEventListener('sg:calculation-rendered',()=>requestAnimationFrame(update));}}
+}
+polishCharts();
+})();

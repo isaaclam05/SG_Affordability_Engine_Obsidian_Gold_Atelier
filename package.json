@@ -1,0 +1,1 @@
+{"name":"sg-affordability-engine","version":"1.0.0","private":true,"type":"commonjs","scripts":{"start":"node server/app.js","dev":"node --watch server/app.js","test":"node --test tests/api.test.js && python3 -m unittest discover -s tests -p 'test_*.py'"},"engines":{"node":">=20"},"dependencies":{"express":"^4.21.2","helmet":"^8.0.0","express-rate-limit":"^7.5.0"}}
